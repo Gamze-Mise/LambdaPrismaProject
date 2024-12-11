@@ -1,0 +1,30 @@
+{
+  "name": "lambdaprismaproject",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "deploy": "serverless deploy",
+    "deploy:prod": "serverless deploy --stage prod",
+    "dev": "serverless offline start",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.22.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.146",
+    "@types/node": "^20.10.4",
+    "esbuild": "^0.19.12",
+    "prisma": "^5.7.0",
+    "serverless": "^3.38.0",
+    "serverless-esbuild": "^1.54.6",
+    "serverless-offline": "^13.9.0",
+    "typescript": "^5.7.2"
+  },
+  "description": ""
+}

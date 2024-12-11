@@ -1,0 +1,51 @@
+service: selfprof-backends
+
+useDotenv: true
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    DATABASE_URL: ${ssm:/selfprof-backends/${self:provider.stage}/DATABASE_URL}
+  vpc:
+    securityGroupIds:
+      - sg-xxxxxxxxxxxxxxxxx # Replace with your security group ID
+    subnetIds:
+      - subnet-xxxxxxxxxxxxxxxxx # Replace with your subnet ID
+      - subnet-yyyyyyyyyyyyyyyyy # Replace with your subnet ID
+
+functions:
+  getAward:
+    handler: src/functions/award/index.getAward
+    events:
+      - http:
+          path: /awards/{userId}
+          method: get
+          cors: true
+
+plugins:
+  - serverless-esbuild
+  - serverless-offline
+
+custom:
+  esbuild:
+    bundle: true
+    minify: true
+    sourcemap: true
+    exclude:
+      - "@prisma/client"
+    platform: "node"
+    target: "node18"
+    define:
+      "require.resolve": undefined
+    concurrency: 10
+
+package:
+  patterns:
+    - "!node_modules/.prisma/client/libquery_engine-*"
+    - "node_modules/.prisma/client/libquery_engine-rhel-*"
+    - "!node_modules/prisma/libquery_engine-*"
+    - "!node_modules/@prisma/engines/**"
+    - "node_modules/.prisma/client/schema.prisma"

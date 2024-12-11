@@ -1,0 +1,1001 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-1.0.x"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Award {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  subject   String
+  company   String?
+  date      DateTime?
+  lang      String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  @@map("Award")
+}
+
+model bundle_products {
+  bp_id           Int             @id @default(autoincrement())
+  bundle_id       Int
+  product_id      Int
+  products        products        @relation(fields: [product_id], references: [product_id], onDelete: NoAction, onUpdate: NoAction, map: "bundle_products_ibfk_1")
+  product_bundles product_bundles @relation(fields: [bundle_id], references: [bundle_id], onDelete: NoAction, onUpdate: NoAction, map: "bundle_products_ibfk_2")
+
+  @@index([bundle_id], map: "bundle_id")
+  @@index([product_id], map: "product_id")
+}
+
+model def_site_themes {
+  theme_id      Int             @id @default(autoincrement())
+  theme_no      String?         @db.VarChar(255)
+  is_exclusive  Boolean?
+  theme_details theme_details[]
+}
+
+model invoice_details {
+  detail_id              Int      @id @default(autoincrement())
+  invoice_id             Int
+  name_or_firm           String   @db.VarChar(500)
+  surname_or_tax_office  String   @db.VarChar(500)
+  identify_or_tax_number String   @db.VarChar(500)
+  address                String   @db.Text
+  district               String   @db.VarChar(500)
+  city                   String   @db.VarChar(500)
+  country                String   @db.VarChar(500)
+  country_code           String?  @db.VarChar(150)
+  phone                  String   @db.VarChar(500)
+  invoices               invoices @relation(fields: [invoice_id], references: [invoice_id], onDelete: NoAction, onUpdate: NoAction, map: "invoice_details_ibfk_1")
+
+  @@index([invoice_id], map: "invoice_id")
+}
+
+model invoices {
+  invoice_id      Int                   @id @default(autoincrement())
+  order_id        Int
+  user_id         Int
+  invoice_type    invoices_invoice_type
+  invoice_date    DateTime?             @db.DateTime(0)
+  invoice_details invoice_details[]
+  orders          orders                @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "invoices_ibfk_1")
+
+  @@index([order_id], map: "order_id")
+}
+
+model order_details {
+  order_detail_id  Int                @id @default(autoincrement())
+  order_id         Int
+  product_id       Int
+  price_id         Int                @unique(map: "price_id")
+  quantity         Int                @default(1)
+  total_price      Float              @db.Float
+  orders           orders             @relation(fields: [order_id], references: [order_id], onDelete: NoAction, onUpdate: NoAction, map: "order_details_ibfk_1")
+  products         products           @relation(fields: [product_id], references: [product_id], onDelete: NoAction, onUpdate: NoAction, map: "order_details_ibfk_2")
+  products_pricing products_pricing[]
+
+  @@index([order_id], map: "order_id")
+  @@index([product_id], map: "product_id")
+}
+
+model orders {
+  order_id          Int                  @id @default(autoincrement())
+  order_no          String               @unique(map: "order_no") @db.VarChar(500)
+  user_id           Int
+  order_status      orders_order_status? @default(order_start)
+  promotion_code    String?              @db.VarChar(500)
+  order_date        DateTime?            @db.DateTime(0)
+  notification_sent Boolean?             @default(false)
+  invoices          invoices[]
+  order_details     order_details[]
+  users             users                @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "orders_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+model product_bundle_descriptions {
+  pbd_id    Int     @id @default(autoincrement())
+  pbd_text  String? @db.LongText
+  pbd_group Int?
+  pbd_lang  String? @db.VarChar(150)
+}
+
+model product_bundles {
+  bundle_id           Int                @id @default(autoincrement())
+  bundle_display_name String?            @db.VarChar(200)
+  bundle_group_id     Int?
+  bundle_products     bundle_products[]
+  products_pricing    products_pricing[]
+}
+
+model products {
+  product_id       Int                @id @default(autoincrement())
+  product_name     String?            @db.VarChar(255)
+  bundle_products  bundle_products[]
+  order_details    order_details[]
+  products_pricing products_pricing[]
+}
+
+model products_pricing {
+  price_id        Int             @default(autoincrement())
+  product_id      Int
+  is_bundle       Boolean
+  price           Float?          @db.Float
+  products        products        @relation(fields: [product_id], references: [product_id], onDelete: NoAction, onUpdate: NoAction, map: "products_pricing_ibfk_1")
+  product_bundles product_bundles @relation(fields: [product_id], references: [bundle_id], onDelete: NoAction, onUpdate: NoAction, map: "products_pricing_ibfk_2")
+  order_details   order_details   @relation(fields: [price_id], references: [price_id], onDelete: NoAction, onUpdate: NoAction, map: "products_pricing_ibfk_3")
+
+  @@id([price_id, product_id])
+  @@index([product_id], map: "product_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model promotions {
+  promotion_id     Int       @id @default(autoincrement())
+  promotion_code   String?   @db.VarChar(500)
+  usage_limit      Int?      @default(0)
+  total_usage      Int?
+  start_date       DateTime? @db.DateTime(0)
+  end_date         DateTime? @db.DateTime(0)
+  discount_rate    Int?
+  discount_amount  Int?
+  promotion_status Boolean?  @default(false)
+}
+
+model realestate_user_portals {
+  id          Int                                 @id @default(autoincrement())
+  user_id     Int
+  portal_name realestate_user_portals_portal_name
+  active      Boolean?                            @default(false)
+  processed   Boolean?                            @default(false)
+  link        String?                             @db.VarChar(300)
+  last_update DateTime?                           @db.DateTime(0)
+  users       users                               @relation(fields: [user_id], references: [user_id], onDelete: NoAction, onUpdate: NoAction, map: "realestate_user_portals_ibfk_1")
+
+  @@unique([user_id, portal_name], map: "user_portal")
+}
+
+model self_campaign {
+  id    Int      @id @default(autoincrement())
+  name  String   @db.VarChar(100)
+  mail  String   @db.VarChar(255)
+  phone String?  @db.VarChar(100)
+  info  String   @db.VarChar(250)
+  page  String   @db.VarChar(100)
+  date  DateTime @db.DateTime(0)
+}
+
+model self_subscription_request {
+  id   Int      @id @default(autoincrement())
+  mail String   @db.VarChar(255)
+  date DateTime @db.DateTime(0)
+}
+
+model site_def_manuel_listing_cats {
+  listing_cat_id           Int                        @id @default(autoincrement())
+  listing_cat_title        String                     @db.VarChar(500)
+  listing_cat_lang         String                     @db.VarChar(500)
+  site_mdl_manuel_listings site_mdl_manuel_listings[]
+}
+
+model site_def_manuel_listings_building_type {
+  building_type_id         Int                        @id @default(autoincrement())
+  building_type_name       String                     @db.VarChar(500)
+  building_type_lang       String                     @default("tr") @db.VarChar(50)
+  site_mdl_manuel_listings site_mdl_manuel_listings[]
+}
+
+model site_def_manuel_listings_heating {
+  listings_heating         Int                        @id @default(autoincrement())
+  listings_heating_name    String                     @db.VarChar(500)
+  listings_heating_lang    String                     @default("tr") @db.VarChar(50)
+  site_mdl_manuel_listings site_mdl_manuel_listings[]
+}
+
+model site_def_manuel_listings_inner {
+  listings_inner_id                     Int                                     @id @default(autoincrement())
+  listings_inner_title                  String                                  @db.VarChar(500)
+  listings_inner_parent                 Int                                     @default(0)
+  listings_inner_lang                   String                                  @default("tr") @db.VarChar(50)
+  site_mdl_manuel_listing_sub_relations site_mdl_manuel_listing_sub_relations[]
+
+  @@index([listings_inner_parent], map: "inner_parent")
+}
+
+model site_def_manuel_listings_outer {
+  listings_outer_id                     Int                                     @id @default(autoincrement())
+  listings_outer_title                  String                                  @db.VarChar(500)
+  listings_outer_parent                 Int                                     @default(0)
+  listings_outer_lang                   String                                  @default("tr") @db.VarChar(50)
+  site_mdl_manuel_listing_sub_relations site_mdl_manuel_listing_sub_relations[]
+
+  @@index([listings_outer_parent], map: "outer_parent")
+}
+
+model site_def_manuel_listings_subcats {
+  listings_subcats_id      Int                        @id @default(autoincrement())
+  listings_subcats_title   String                     @db.VarChar(500)
+  listings_subcats_lang    String                     @default("tr") @db.VarChar(500)
+  listings_parentcats_id   Int?
+  site_mdl_manuel_listings site_mdl_manuel_listings[]
+
+  @@index([listings_parentcats_id], map: "parent_cat")
+}
+
+model site_integrations {
+  id               Int        @id @default(autoincrement())
+  site_id          Int
+  integration_type String     @db.VarChar(50)
+  integration_data String?    @db.MediumText
+  user_sites       user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "site_integrations_ibfk_1")
+
+  @@unique([site_id, integration_type], map: "user_integration_unique")
+}
+
+model site_mdl_award {
+  award_id   Int         @id @default(autoincrement())
+  site_id    Int?
+  subject    String?     @db.VarChar(255)
+  company    String?     @db.VarChar(255)
+  date       String?     @db.VarChar(50)
+  lang       String      @default("tr") @db.VarChar(50)
+  user_sites user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "award_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_before_after {
+  id                               Int                              @id @default(autoincrement())
+  site_id                          Int
+  category_id                      Int
+  title                            String                           @db.VarChar(255)
+  before_photo                     String                           @db.VarChar(255)
+  after_photo                      String                           @db.VarChar(255)
+  user_sites                       user_sites                       @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "before_after_ibfk_1")
+  site_mdl_before_after_categories site_mdl_before_after_categories @relation(fields: [category_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "before_after_ibfk_2")
+
+  @@index([category_id], map: "category_id")
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_before_after_categories {
+  id                    Int                     @id @default(autoincrement())
+  site_id               Int
+  category_name         String                  @db.VarChar(255)
+  lang                  String                  @default("tr") @db.VarChar(50)
+  site_mdl_before_after site_mdl_before_after[]
+  user_sites            user_sites              @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "before_after_categories_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_blog {
+  id           Int        @id @default(autoincrement())
+  site_id      Int
+  seo_url      String     @db.VarChar(200)
+  blog_type    Int        @default(0) @db.TinyInt
+  blog_title   String     @db.VarChar(255)
+  blog_photo   String     @db.LongText
+  blog_content String     @db.LongText
+  blog_date    DateTime   @db.Date
+  blog_active  Boolean    @default(true)
+  blog_views   BigInt     @default(0)
+  lang         String     @default("tr") @db.VarChar(50)
+  user_sites   user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "blog_ibfk_1")
+
+  @@unique([site_id, seo_url], map: "site_id")
+}
+
+model site_mdl_brand_gallery {
+  logo_id    Int         @id @default(autoincrement())
+  site_id    Int?
+  img_index  Int?
+  img_path   String?     @db.VarChar(255)
+  lang       String      @default("tr") @db.VarChar(50)
+  user_sites user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "brand_logo_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_business_card {
+  card_id            Int         @id @default(autoincrement())
+  site_id            Int?
+  listing_hepsi      String?     @db.VarChar(200)
+  listing_sahibinden String?     @db.VarChar(200)
+  listing_remax      String?     @db.VarChar(200)
+  listing_zingat     String?     @db.VarChar(200)
+  listing_emlakjet   String?     @db.VarChar(200)
+  listing_endeksa    String?     @db.VarChar(200)
+  user_sites         user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "business_foreign1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_certificate {
+  certificate_id Int         @id @default(autoincrement())
+  site_id        Int?
+  subject        String?     @db.VarChar(255)
+  image          String?     @db.VarChar(255)
+  company        String?     @db.VarChar(255)
+  date           String?     @db.VarChar(50)
+  lang           String      @default("tr") @db.VarChar(50)
+  user_sites     user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "certificate_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_comment {
+  comment_id Int         @id @default(autoincrement())
+  site_id    Int?
+  name       String?     @db.VarChar(255)
+  company    String?     @db.VarChar(255)
+  comment    String?     @db.Text
+  lang       String      @default("tr") @db.VarChar(50)
+  user_sites user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "comment_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_contact {
+  contact_id    Int        @id @default(autoincrement())
+  site_id       Int
+  country_code  Int
+  phone         Int?
+  residence     String?    @db.VarChar(255)
+  email_address String?    @db.VarChar(255)
+  display_phone Boolean?
+  user_sites    user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "contract_foreign1")
+
+  @@index([site_id], map: "contract_foreign1")
+}
+
+model site_mdl_education {
+  education_id Int                       @id @default(autoincrement())
+  site_id      Int?
+  institution  String?                   @db.VarChar(255)
+  department   String?                   @db.VarChar(255)
+  year         String?                   @db.VarChar(50)
+  description  String?                   @db.Text
+  level        site_mdl_education_level?
+  lang         String                    @default("tr") @db.VarChar(50)
+  user_sites   user_sites?               @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "education_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_experience {
+  experience_id Int         @id @default(autoincrement())
+  site_id       Int?
+  company       String?     @db.VarChar(255)
+  position      String?     @db.VarChar(255)
+  start         String?     @db.VarChar(50)
+  end           String?     @db.VarChar(50)
+  description   String?     @db.Text
+  lang          String      @default("tr") @db.VarChar(50)
+  user_sites    user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "experience_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_expertise {
+  expertise_id Int         @id @default(autoincrement())
+  site_id      Int?
+  name         String?     @db.VarChar(255)
+  detail       String?     @db.Text
+  lang         String      @default("tr") @db.VarChar(50)
+  user_sites   user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "expertise_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_faq {
+  faq_id     Int         @id @default(autoincrement())
+  site_id    Int?
+  question   String?     @db.Text
+  answer     String?     @db.Text
+  lang       String      @default("tr") @db.VarChar(50)
+  user_sites user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "faq_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_foreign_language {
+  language_id Int                                 @id @default(autoincrement())
+  site_id     Int?
+  language    String?                             @db.VarChar(255)
+  speaking    site_mdl_foreign_language_speaking? @default(beginer)
+  reading     site_mdl_foreign_language_reading?  @default(beginer)
+  user_sites  user_sites?                         @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "foreign_language_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_gallery {
+  gallery_id              Int                       @id @default(autoincrement())
+  site_id                 Int?
+  gallery_name            String?                   @db.VarChar(255)
+  lang                    String                    @default("tr") @db.VarChar(50)
+  user_sites              user_sites?               @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "gallery_ibfk_1")
+  site_mdl_gallery_photos site_mdl_gallery_photos[]
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_gallery_photos {
+  gallery_photos_id Int              @default(autoincrement())
+  gallery_id        Int
+  img_index         Int?
+  img_path          String?          @db.VarChar(255)
+  site_mdl_gallery  site_mdl_gallery @relation(fields: [gallery_id], references: [gallery_id], onDelete: NoAction, onUpdate: NoAction, map: "site_mdl_gallery_photos_ibfk_1")
+
+  @@id([gallery_photos_id, gallery_id])
+  @@index([gallery_id], map: "gallery_id")
+}
+
+model site_mdl_hobby {
+  hobby_id   Int         @id @default(autoincrement())
+  site_id    Int?
+  name       String?     @db.VarChar(255)
+  lang       String      @default("tr") @db.VarChar(50)
+  user_sites user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "hobby_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_inbox {
+  id         Int        @id @default(autoincrement())
+  site_id    Int
+  name       String     @db.VarChar(100)
+  surname    String     @db.VarChar(100)
+  mail       String     @db.VarChar(255)
+  phone      String?    @db.VarChar(100)
+  content    String     @db.Text
+  date       DateTime   @db.DateTime(0)
+  user_sites user_sites @relation(fields: [id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "site_mdl_inbox_ibfk_1")
+}
+
+model site_mdl_landing {
+  id         Int        @id @default(autoincrement())
+  site_id    Int
+  title      String     @db.VarChar(250)
+  text       String     @db.Text
+  banner     String     @db.VarChar(500)
+  date       DateTime   @db.DateTime(0)
+  lang       String     @db.VarChar(150)
+  user_sites user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "foreign1")
+
+  @@index([site_id], map: "foreign1")
+}
+
+model site_mdl_lead_request_types {
+  id                       Int                        @id @default(autoincrement())
+  name                     String                     @db.VarChar(255)
+  lang                     String                     @default("tr") @db.VarChar(50)
+  site_mdl_leads           site_mdl_leads[]
+  site_mdl_user_lead_types site_mdl_user_lead_types[]
+}
+
+model site_mdl_lead_request_with_site {
+  id         Int        @id @default(autoincrement())
+  site_id    Int
+  request_id Int
+  is_active  Int        @default(1) @db.TinyInt
+  user_sites user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "leadrequestwithsite_foreign1")
+
+  @@index([site_id], map: "leadrequestwithsite_foreign1")
+}
+
+model site_mdl_leads {
+  id                          Int                          @id @default(autoincrement())
+  site_id                     Int
+  lead_type                   site_mdl_leads_lead_type
+  name                        String                       @db.VarChar(255)
+  email                       String?                      @db.VarChar(255)
+  phone                       String                       @db.VarChar(50)
+  subject                     String?                      @db.VarChar(255)
+  note                        String?                      @db.Text
+  request_type_id             Int?
+  listing_info                String?                      @db.VarChar(1500)
+  from_detail_page            Boolean                      @default(false)
+  is_read                     Boolean                      @default(false)
+  created_at                  DateTime                     @default(dbgenerated("(now())")) @db.DateTime(0)
+  lang                        String                       @default("tr") @db.VarChar(50)
+  user_sites                  user_sites                   @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "leads_ibfk_1")
+  site_mdl_lead_request_types site_mdl_lead_request_types? @relation(fields: [request_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "leads_ibfk_2")
+
+  @@index([request_type_id], map: "request_type_id")
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_manuel_listing_gallery {
+  gallery_id               Int                      @id @default(autoincrement())
+  listing_id               Int
+  photo_index              Int?
+  photo                    String?                  @db.Text
+  site_mdl_manuel_listings site_mdl_manuel_listings @relation(fields: [listing_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "SİTE_MDL_MANUEL_LİSTİNG_GALLERY3")
+
+  @@index([listing_id], map: "SİTE_MDL_MANUEL_LİSTİNG_GALLERY3")
+}
+
+model site_mdl_manuel_listing_sub_relations {
+  rel_id                         Int                                              @id @default(autoincrement())
+  listing_id                     Int
+  item_id                        Int?
+  item_type                      site_mdl_manuel_listing_sub_relations_item_type?
+  site_def_manuel_listings_inner site_def_manuel_listings_inner?                  @relation(fields: [item_id], references: [listings_inner_id], onDelete: NoAction, onUpdate: NoAction, map: "site_mdl_manuel_listing_sub_relations_ibfk_1")
+  site_def_manuel_listings_outer site_def_manuel_listings_outer?                  @relation(fields: [item_id], references: [listings_outer_id], onDelete: NoAction, onUpdate: NoAction, map: "site_mdl_manuel_listing_sub_relations_ibfk_2")
+
+  @@index([item_id], map: "item_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model site_mdl_manuel_listings {
+  id                                     Int                                    @id @default(autoincrement())
+  site_id                                Int
+  seo_url                                String                                 @db.VarChar(500)
+  title                                  String?                                @db.VarChar(255)
+  ordinal                                Int?
+  status                                 Int?                                   @db.TinyInt
+  for_sale                               Boolean
+  content                                String?                                @db.Text
+  is_ask_price                           Boolean                                @default(false)
+  main_category_id                       Int
+  sub_category_id                        Int
+  price                                  Decimal?                               @db.Decimal(15, 2)
+  currency                               String?                                @db.VarChar(10)
+  city                                   String                                 @db.VarChar(500)
+  district                               String                                 @db.VarChar(500)
+  room_count                             Int?
+  bathroom_count                         Int?
+  gross_area                             Int?
+  net_area                               Int?
+  floor_count                            Int?
+  current_floor                          Int?
+  building_age                           Int?
+  heating_type_id                        Int
+  building_type_id                       Int
+  suitable                               Boolean?
+  deed_status                            String?                                @db.VarChar(50)
+  floor_area_ratio                       String?                                @db.VarChar(50)
+  number_of_sections                     String?                                @db.VarChar(50)
+  workplace_room_count                   String?                                @db.VarChar(50)
+  transfer                               Boolean?
+  usage_status                           String?                                @db.VarChar(50)
+  mortgage                               Boolean?
+  map_location                           String?                                @db.VarChar(255)
+  video_link                             String?                                @db.VarChar(255)
+  listing_date                           DateTime?                              @db.Date
+  lang                                   String                                 @default("tr") @db.VarChar(50)
+  site_mdl_manuel_listing_gallery        site_mdl_manuel_listing_gallery[]
+  site_def_manuel_listing_cats           site_def_manuel_listing_cats           @relation(fields: [main_category_id], references: [listing_cat_id], onDelete: NoAction, onUpdate: NoAction, map: "mdl_manuel_listings_ibfk_1")
+  site_def_manuel_listings_subcats       site_def_manuel_listings_subcats       @relation(fields: [sub_category_id], references: [listings_subcats_id], onDelete: NoAction, onUpdate: NoAction, map: "mdl_manuel_listings_ibfk_2")
+  site_def_manuel_listings_heating       site_def_manuel_listings_heating       @relation(fields: [heating_type_id], references: [listings_heating], onDelete: NoAction, onUpdate: NoAction, map: "mdl_manuel_listings_ibfk_3")
+  site_def_manuel_listings_building_type site_def_manuel_listings_building_type @relation(fields: [building_type_id], references: [building_type_id], onDelete: NoAction, onUpdate: NoAction, map: "mdl_manuel_listings_ibfk_4")
+
+  @@index([building_type_id], map: "building_type_id")
+  @@index([heating_type_id], map: "heating_type_id")
+  @@index([main_category_id], map: "main_category_id")
+  @@index([sub_category_id], map: "sub_category_id")
+}
+
+model site_mdl_ngo {
+  ngo_id     Int         @id @default(autoincrement())
+  site_id    Int?
+  name       String?     @db.VarChar(255)
+  lang       String      @default("tr") @db.VarChar(50)
+  user_sites user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "ngo_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_personal {
+  site_id     Int        @id
+  profession  String?    @db.VarChar(200)
+  appellation String?    @db.VarChar(200)
+  profile     String?    @db.VarChar(255)
+  short_about String?    @db.VarChar(500)
+  about       String?    @db.LongText
+  lang        String     @default("tr") @db.VarChar(50)
+  user_sites  user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "personal_ibfk_1")
+}
+
+model site_mdl_plan {
+  id                    Int                     @id @default(autoincrement())
+  site_id               Int
+  seo_url               String?                 @db.VarChar(100)
+  title                 String?                 @db.VarChar(100)
+  category_id           Int
+  price                 Float?                  @db.Float
+  currency              String?                 @db.VarChar(50)
+  content               String?                 @db.Text
+  highlight             Int?                    @default(0) @db.TinyInt
+  user_sites            user_sites              @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "site_mdl_plan_ibfk_1")
+  site_mdl_plan_faq     site_mdl_plan_faq[]
+  site_mdl_plan_gallery site_mdl_plan_gallery[]
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_plan_cats {
+  id         Int        @id @default(autoincrement())
+  site_id    Int
+  name       String?    @db.VarChar(500)
+  seo_url    String?    @db.VarChar(500)
+  highlight  Int?       @default(0) @db.TinyInt
+  lang       String     @default("tr") @db.VarChar(50)
+  user_sites user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "plancat_foreign1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_plan_faq {
+  id            Int           @id @default(autoincrement())
+  plan_id       Int
+  question      String?       @db.Text
+  answer        String?       @db.Text
+  site_mdl_plan site_mdl_plan @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "planfaq_forign1")
+
+  @@index([plan_id], map: "plan_id")
+}
+
+model site_mdl_plan_gallery {
+  id            Int           @id @default(autoincrement())
+  plan_id       Int
+  photo         String?       @db.VarChar(500)
+  site_mdl_plan site_mdl_plan @relation(fields: [plan_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "plangallery_foreign1")
+
+  @@index([plan_id], map: "plan_id")
+}
+
+model site_mdl_popup {
+  id                      Int                         @id @default(autoincrement())
+  site_id                 Int
+  type                    site_mdl_popup_type         @default(newsletter)
+  name                    String?                     @db.VarChar(100)
+  popup_timing            site_mdl_popup_popup_timing @default(on_page_load)
+  mail                    String?                     @db.VarChar(100)
+  display_count           Int                         @default(0)
+  start_date              DateTime?                   @db.DateTime(0)
+  end_date                DateTime?                   @db.DateTime(0)
+  title                   String?                     @db.VarChar(100)
+  subtitle                String?                     @db.VarChar(100)
+  picture                 String?                     @db.VarChar(255)
+  link                    String?                     @db.VarChar(255)
+  lang                    String                      @default("tr") @db.VarChar(50)
+  user_sites              user_sites                  @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "popup_ibfk_1")
+  site_mdl_popup_messages site_mdl_popup_messages[]
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_popup_messages {
+  id             Int            @id @default(autoincrement())
+  popup_id       Int
+  sender_name    String         @db.VarChar(100)
+  sender_tel     String?        @db.VarChar(50)
+  sender_email   String?        @db.VarChar(100)
+  message_date   DateTime       @default(dbgenerated("(now())")) @db.DateTime(0)
+  is_read        Boolean        @default(false)
+  is_deleted     Boolean        @default(false)
+  site_mdl_popup site_mdl_popup @relation(fields: [popup_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "popup_messages_ibfk_1")
+
+  @@index([popup_id], map: "popup_id")
+}
+
+model site_mdl_portfolio_presentations {
+  id               Int        @id @default(autoincrement())
+  site_id          Int
+  file_name        String     @db.VarChar(255)
+  selected_listing String     @db.VarChar(255)
+  create_date      DateTime   @default(dbgenerated("(now())")) @db.DateTime(0)
+  lang             String     @default("tr") @db.VarChar(50)
+  user_sites       user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "portfolio_presentations_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_projects {
+  project_id  Int         @id @default(autoincrement())
+  site_id     Int?
+  name        String?     @db.VarChar(255)
+  location    String?     @db.VarChar(255)
+  address     String?     @db.VarChar(255)
+  description String?     @db.Text
+  lang        String      @default("tr") @db.VarChar(50)
+  user_sites  user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "projects_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_publications {
+  publication_id   Int         @id @default(autoincrement())
+  site_id          Int?
+  publication_name String?     @db.VarChar(500)
+  publication_desc String?     @db.VarChar(500)
+  publication_firm String?     @db.VarChar(500)
+  publication_year String?     @db.VarChar(500)
+  user_sites       user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "publictions_foreign1")
+
+  @@index([site_id], map: "publictions_foreign1")
+}
+
+model site_mdl_reference {
+  reference_id Int         @id @default(autoincrement())
+  site_id      Int?
+  name         String?     @db.VarChar(255)
+  company      String?     @db.VarChar(255)
+  title        String?     @db.VarChar(255)
+  lang         String      @default("tr") @db.VarChar(50)
+  user_sites   user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "reference_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_skill {
+  skill_id   Int         @id @default(autoincrement())
+  site_id    Int?
+  skill      String?     @db.VarChar(255)
+  level      Int?
+  lang       String      @default("tr") @db.VarChar(50)
+  user_sites user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "skill_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_mdl_social_media {
+  site_id    Int        @id
+  linkedin   String?    @db.VarChar(255)
+  facebook   String?    @db.VarChar(255)
+  twitter    String?    @db.VarChar(255)
+  instagram  String?    @db.VarChar(255)
+  tiktok     String?    @db.VarChar(255)
+  youtube    String?    @db.VarChar(255)
+  user_sites user_sites @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "social_media_ibfk_1")
+}
+
+model site_mdl_user_lead_types {
+  id                          Int                         @id @default(autoincrement())
+  site_id                     Int
+  lead_type_id                Int
+  selected_at                 DateTime                    @default(dbgenerated("(now())")) @db.DateTime(0)
+  lang                        String                      @default("tr") @db.VarChar(50)
+  user_sites                  user_sites                  @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "user_lead_types_ibfk_1")
+  site_mdl_lead_request_types site_mdl_lead_request_types @relation(fields: [lead_type_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_lead_types_ibfk_2")
+
+  @@unique([site_id, lead_type_id], map: "site_id")
+  @@index([lead_type_id], map: "lead_type_id")
+}
+
+model site_mdl_video {
+  video_id    Int         @id @default(autoincrement())
+  site_id     Int?
+  link        String?     @db.VarChar(255)
+  description String?     @db.Text
+  lang        String      @default("tr") @db.VarChar(50)
+  user_sites  user_sites? @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "video_ibfk_1")
+
+  @@index([site_id], map: "site_id")
+}
+
+model site_sectors {
+  site_sector_id   Int                            @id @default(autoincrement())
+  site_sector_name String?                        @db.VarChar(500)
+  site_sector_type site_sectors_site_sector_type?
+  user_sites       user_sites[]
+}
+
+model site_types {
+  site_type_id   Int          @id @default(autoincrement())
+  site_type_name String?      @db.VarChar(150)
+  user_sites     user_sites[]
+}
+
+model theme_details {
+  theme_detail_id Int                        @id @default(autoincrement())
+  theme_id        Int?
+  site_id         Int?
+  detail_type     theme_details_detail_type?
+  is_active       Boolean?
+  def_site_themes def_site_themes?           @relation(fields: [theme_id], references: [theme_id], onDelete: NoAction, onUpdate: NoAction, map: "theme_details_ibfk_1")
+  user_sites      user_sites?                @relation(fields: [site_id], references: [site_id], onDelete: NoAction, onUpdate: NoAction, map: "themedetails_foreign2")
+  theme_gallery   theme_gallery[]
+
+  @@index([theme_id], map: "theme_id")
+  @@index([site_id], map: "themedetails_foreign2")
+}
+
+model theme_gallery {
+  theme_gallery_id    Int                               @id @default(autoincrement())
+  theme_detail_id     Int
+  theme_gallery_photo String?                           @db.LongText
+  theme_gallery_type  theme_gallery_theme_gallery_type?
+  gallery_ordinal     Int?
+  theme_details       theme_details                     @relation(fields: [theme_detail_id], references: [theme_detail_id], onDelete: NoAction, onUpdate: NoAction, map: "foreign")
+
+  @@index([theme_detail_id], map: "foreign")
+}
+
+model user_sites {
+  site_id                          Int                                @id @default(autoincrement())
+  uwp_id                           Int                                @unique(map: "uwp_id")
+  site_domain                      String?                            @db.VarChar(150)
+  site_folder                      String?                            @db.VarChar(150)
+  site_type_id                     Int?
+  site_brand                       String?                            @db.VarChar(200)
+  domain_status                    user_sites_domain_status?
+  site_logo                        String?                            @db.LongText
+  display_logo                     Boolean?
+  site_sector                      Int?
+  site_color                       String?                            @db.VarChar(150)
+  site_theme                       Int?
+  site_integrations                site_integrations[]
+  site_mdl_award                   site_mdl_award[]
+  site_mdl_before_after            site_mdl_before_after[]
+  site_mdl_before_after_categories site_mdl_before_after_categories[]
+  site_mdl_blog                    site_mdl_blog[]
+  site_mdl_brand_gallery           site_mdl_brand_gallery[]
+  site_mdl_business_card           site_mdl_business_card[]
+  site_mdl_certificate             site_mdl_certificate[]
+  site_mdl_comment                 site_mdl_comment[]
+  site_mdl_contact                 site_mdl_contact[]
+  site_mdl_education               site_mdl_education[]
+  site_mdl_experience              site_mdl_experience[]
+  site_mdl_expertise               site_mdl_expertise[]
+  site_mdl_faq                     site_mdl_faq[]
+  site_mdl_foreign_language        site_mdl_foreign_language[]
+  site_mdl_gallery                 site_mdl_gallery[]
+  site_mdl_hobby                   site_mdl_hobby[]
+  site_mdl_inbox                   site_mdl_inbox?
+  site_mdl_landing                 site_mdl_landing[]
+  site_mdl_lead_request_with_site  site_mdl_lead_request_with_site[]
+  site_mdl_leads                   site_mdl_leads[]
+  site_mdl_ngo                     site_mdl_ngo[]
+  site_mdl_personal                site_mdl_personal?
+  site_mdl_plan                    site_mdl_plan[]
+  site_mdl_plan_cats               site_mdl_plan_cats[]
+  site_mdl_popup                   site_mdl_popup[]
+  site_mdl_portfolio_presentations site_mdl_portfolio_presentations[]
+  site_mdl_projects                site_mdl_projects[]
+  site_mdl_publications            site_mdl_publications[]
+  site_mdl_reference               site_mdl_reference[]
+  site_mdl_skill                   site_mdl_skill[]
+  site_mdl_social_media            site_mdl_social_media?
+  site_mdl_user_lead_types         site_mdl_user_lead_types[]
+  site_mdl_video                   site_mdl_video[]
+  theme_details                    theme_details[]
+  site_sectors                     site_sectors?                      @relation(fields: [site_sector], references: [site_sector_id], onDelete: NoAction, onUpdate: NoAction, map: "user_sites_foreign1")
+  site_types                       site_types?                        @relation(fields: [site_type_id], references: [site_type_id], onDelete: NoAction, onUpdate: NoAction, map: "user_sites_foreign2")
+  user_with_products               user_with_products[]               @ignore
+
+  @@index([site_sector], map: "user_sites_foreign1")
+  @@index([site_type_id], map: "user_sites_foreign2")
+}
+
+model user_subscription_settings {
+  uss_id         Int                                  @id @default(autoincrement())
+  user_id        Int                                  @unique(map: "user_id")
+  subs_type      user_subscription_settings_subs_type
+  setting_status Boolean
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model user_with_products {
+  uwp_id         Int
+  product_id     Int
+  user_id        Int
+  uwp_start_date DateTime?  @db.DateTime(0)
+  uwp_end_date   DateTime?  @db.DateTime(0)
+  user_sites     user_sites @relation(fields: [uwp_id], references: [uwp_id], onDelete: NoAction, onUpdate: NoAction, map: "user_with_products_ibfk_1")
+
+  @@index([uwp_id], map: "uwp_id")
+  @@ignore
+}
+
+model users {
+  user_id                 Int                       @id @default(autoincrement())
+  email                   String                    @unique(map: "email") @db.VarChar(150)
+  password                String                    @db.VarChar(150)
+  first_name              String?                   @db.VarChar(50)
+  last_name               String?                   @db.VarChar(50)
+  country_code            String?                   @default("+90") @db.VarChar(5)
+  phone                   Int?                      @unique(map: "phone")
+  created_at              DateTime?                 @db.DateTime(0)
+  updated_at              DateTime?                 @db.DateTime(0)
+  email_verified          Boolean?                  @default(false)
+  phone_verified          Boolean?                  @default(false)
+  subscribe               Boolean?                  @default(true)
+  orders                  orders[]
+  realestate_user_portals realestate_user_portals[]
+}
+
+enum realestate_user_portals_portal_name {
+  sahibinden
+  remax
+  zingat
+  emlakjet
+  hepsi_emlak
+  altin_emlak
+  cb
+}
+
+enum site_mdl_leads_lead_type {
+  request_form
+  listing_card
+}
+
+enum site_mdl_popup_type {
+  newsletter
+  picture
+}
+
+enum site_sectors_site_sector_type {
+  individual
+  corporate
+}
+
+enum user_subscription_settings_subs_type {
+  monthly_report
+  campaign
+}
+
+enum invoices_invoice_type {
+  individual
+  corporate
+}
+
+enum orders_order_status {
+  order_start
+  in_payment
+  payment_success
+}
+
+enum site_mdl_foreign_language_speaking {
+  beginer
+  intermediate
+  advanced
+}
+
+enum site_mdl_manuel_listing_sub_relations_item_type {
+  inner
+  outer
+}
+
+enum theme_details_detail_type {
+  carousel
+  background
+  stock_photo
+}
+
+enum theme_gallery_theme_gallery_type {
+  carousel
+  background
+  stock_photo
+}
+
+enum site_mdl_foreign_language_reading {
+  beginer
+  intermediate
+  advanced
+}
+
+enum site_mdl_popup_popup_timing {
+  on_page_load
+  after_5_seconds
+  on_scroll_down
+}
+
+enum site_mdl_education_level {
+  beginner
+  intermediate
+  advanced
+}
+
+enum user_sites_domain_status {
+  redirected
+  response_wait
+  no_redirect
+}
