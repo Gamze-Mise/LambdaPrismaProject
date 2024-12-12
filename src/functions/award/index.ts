@@ -5,14 +5,14 @@ import { formatJSONResponse } from "../../libs/apiGateway";
 
 // Yardımcı fonksiyonlar
 const validateIds = (userId?: string, awardId?: string) => {
-  const parsedUserId = userId ? Number(userId) : null;
-  const parsedAwardId = awardId ? Number(awardId) : null;
+  const parsedUserId = userId ? Number(userId) : undefined;
+  const parsedAwardId = awardId ? Number(awardId) : undefined;
 
-  if (userId && isNaN(parsedUserId)) {
+  if (userId && isNaN(Number(userId))) {
     throw new AppError(400, "Invalid user ID");
   }
 
-  if (awardId && isNaN(parsedAwardId)) {
+  if (awardId && isNaN(Number(awardId))) {
     throw new AppError(400, "Invalid award ID");
   }
 
@@ -25,6 +25,10 @@ export const getAward = async (
 ): Promise<APIGatewayProxyResult> => {
   try {
     const { parsedUserId } = validateIds(event.pathParameters?.userId);
+
+    if (!parsedUserId) {
+      throw new AppError(400, "User ID is required");
+    }
 
     console.log("Searching for userId:", parsedUserId);
 
@@ -50,6 +54,10 @@ export const getSpecificAward = async (
       event.pathParameters?.userId,
       event.pathParameters?.awardId
     );
+
+    if (!parsedUserId || !parsedAwardId) {
+      throw new AppError(400, "Both user ID and award ID are required");
+    }
 
     console.log(
       "Searching for userId:",
@@ -80,7 +88,10 @@ export const createAward = async (
 ): Promise<APIGatewayProxyResult> => {
   try {
     const { parsedUserId } = validateIds(event.pathParameters?.userId);
-    console.log("Creating award for userId:", parsedUserId);
+
+    if (!parsedUserId) {
+      throw new AppError(400, "User ID is required");
+    }
 
     if (!event.body) {
       throw new AppError(400, "Request body is required");
@@ -89,7 +100,6 @@ export const createAward = async (
     let body;
     try {
       body = JSON.parse(event.body);
-      console.log("Parsed body:", body);
     } catch (e) {
       throw new AppError(400, "Invalid JSON in request body");
     }
@@ -106,31 +116,32 @@ export const createAward = async (
       lang: body.lang || null,
     };
 
-    console.log("Attempting to create award with data:", awardData);
-
     const award = await prisma.award.create({
-      data: awardData,
+      data: {
+        userId: parsedUserId,
+        subject: body.subject,
+        company: body.company || null,
+        date: body.date ? new Date(body.date) : null,
+        lang: body.lang || null,
+      },
     });
-
-    console.log("Created award:", award);
 
     return formatJSONResponse({ award }, 201);
   } catch (error) {
-    console.error("Detailed error in createAward:", error);
-
     if (error instanceof AppError) {
-      return formatErrorResponse(error, error.statusCode);
+      return formatJSONResponse({ error: error.message }, error.statusCode);
     }
 
-    // Prisma hata kodlarını kontrol et
-    if (error.code) {
-      console.error("Prisma error code:", error.code);
-      switch (error.code) {
+    if (typeof error === "object" && error !== null && "code" in error) {
+      const prismaError = error as { code: string };
+      switch (prismaError.code) {
         case "P2002":
-          return formatErrorResponse(new Error("Duplicate entry"), 400);
+          return formatJSONResponse({ error: "Duplicate entry" }, 400);
         case "P2003":
-          return formatErrorResponse(
-            new Error("Foreign key constraint failed"),
+          return formatJSONResponse(
+            {
+              error: "Foreign key constraint failed",
+            },
             400
           );
         default:
@@ -138,7 +149,13 @@ export const createAward = async (
       }
     }
 
-    return formatErrorResponse(error as Error);
+    return formatJSONResponse(
+      {
+        error: "Internal server error",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      500
+    );
   }
 };
 
@@ -151,7 +168,16 @@ export const updateAward = async (
       event.pathParameters?.userId,
       event.pathParameters?.awardId
     );
-    const body = JSON.parse(event.body || "{}");
+
+    if (!parsedUserId || !parsedAwardId) {
+      throw new AppError(400, "Both user ID and award ID are required");
+    }
+
+    if (!event.body) {
+      throw new AppError(400, "Request body is required");
+    }
+
+    const body = JSON.parse(event.body);
 
     const award = await prisma.award.update({
       where: {
@@ -161,7 +187,7 @@ export const updateAward = async (
       data: {
         subject: body.subject,
         company: body.company,
-        date: body.date,
+        date: body.date ? new Date(body.date) : null,
         lang: body.lang,
       },
     });
@@ -181,6 +207,10 @@ export const deleteAward = async (
       event.pathParameters?.userId,
       event.pathParameters?.awardId
     );
+
+    if (!parsedUserId || !parsedAwardId) {
+      throw new AppError(400, "Both user ID and award ID are required");
+    }
 
     await prisma.award.delete({
       where: {
